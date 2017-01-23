@@ -1,0 +1,180 @@
+---
+title: "Promoting Alternate Transportation in California"
+author: 
+- "Joseph Carl"
+- "BUAN 5210"
+date: "December 9, 2016"
+output: html_document
+---
+
+
+### Introduction
+
+As California grows in the 21st century and combats the threats of climate change, it must look for ways to reduce driving alone, which contributes to traffic congestion and is a major source of greenhouse gas emissions. Additionally, the state must find ways to promote alternatives to driving alone that are equitable across California's racial and ethnic groups as well as across geographies. The purpose of this analysis is to identify how Californians use different modes of transportation across the state and across racial and ethnic groups, and explore ways alternate forms of transportation can be promoted. The dataset for this analysis comes from the California Health and Human Services Agency and provides the number of people in each county and region who use as their main source of commuting to work one of the following transportation modes: working from home ("ATHOME"), bicycling, driving alone ("CAR"), carpooling, taking public transit ("PUBLICTR"), and walking. The data are available for each of California's 58 counties as well as 15 regions, which are groups of counties. The data, taken from the U.S. Census and the American Community Survey, are for years 2000 and 2006-2010, where the 2006-2010 values are an average of those years, as that data was collected in multiple years. These two time points were chosen because the data for these periods were also broken down into 8 racial and ethnic groups: African Americans, American Indian/Alaska Natives (AIAN), Asians, Latinos (of all races), Multiple race, Native Hawaiian or Pacific Islander (NHOPI), Other, and non-Latino White. The key findings of this analysis include that driving alone increased from 2000 to 2006-2010, different racial and ethnic groups and over-represented in different transportation modes, and promoting alternate transportation can work in urban, suburban, and rural areas.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+options(width = 200)
+
+# Clear workspace
+rm(list=ls(all=TRUE))
+
+# Libraries
+library(tidyverse)
+library(maps)             # for creating county maps of California
+library(RColorBrewer)
+
+#this is the data used for this analysis
+CAtransit <- read.csv("CAtransit.csv", stringsAsFactors = TRUE)
+
+# Capwords function from toupper() documentation to make strings look better
+capwords <- function(s, strict = FALSE) {
+  cap <- function(s) paste(toupper(substring(s, 1, 1)),
+                           {s <- substring(s, 2); if(strict) tolower(s) else s},
+                           sep = "", collapse = " " )
+  sapply(strsplit(s, split = " "), cap, USE.NAMES = !is.null(names(s)))
+}
+
+
+```
+
+
+### Car is Dominant Across Racial and Ethnic Groups, and Increased Over Time
+
+Not surprisingly, the car remains king in California. Statewide, around 72% of commuters drove alone to work in both 2000 and 2006-2010. However, there is considerable variation in that number across racial and ethnic groups, and over time. For example, in 2000 only 62% of Latinos drove to work, compared to 77% of whites. That gap closed slightly in 2006-2010, to 68% and 76.5%. Similarly, though the state rate of carpooling was 12% of the workforce in 2006-2010, 16.5% of Latinos and 13% of Asians carpooled, compared to 8% of whites. The following graph shows the breakdown of transit modes used in each report year and across races and ethnic groups. 
+
+```{r eth, echo=FALSE}
+# Do different races/ethnicities use transport modes differently across CA?
+CAtransit %>% 
+  group_by(race_eth_name, mode, reportyear) %>% 
+  summarise(modepop = sum(pop_mode, na.rm=T), totpop = sum(pop_total, na.rm=T),
+            perc = modepop/totpop) %>% 
+  ggplot(aes(race_eth_name, perc, fill=mode))+
+  geom_bar(stat="identity")+
+  facet_grid(reportyear ~.)+
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))+
+  labs(x="Race/Ethnicity",
+       y="Percent of Workforce Using Transit Mode", 
+       fill="Mode",
+       title = "Driving Alone Is Dominant Transportation Mode for All Groups")
+# whites appear to drive alone the most, while Latinos drive alone the least and carpool the most
+# African Americans appear to use public transit at higher rates than others
+```
+
+Interestingly, driving alone actually increased as a percentage of the workforce across all groups between 2000 and 2006-2010, except for a slight decline for whites. However, the percentage of carpoolers decreased significantly for all groups. I expected to see the opposite trend, that as the state grew over time, more people would opt for alternate transportation modes as traffic worsened. However, this could be confounded by the fact that 2006-2010 included the beginning of the financial crisis and recession. It could be that during those years, cheaper gas prices made driving alone easier, or that people who lost jobs had to look elsewhere and drive further for work, thus forcing them to drive alone. Between 2000 and 2006-2010, working from home had modest increases as a percentage of the workforce, and other modes of transportation had very little change.
+
+```{r eth2, echo=FALSE}
+# How much did mode usage change over time for each race/ethnicity?
+CAtransit %>%  
+  group_by(race_eth_name, mode, reportyear) %>% 
+  summarise(modepop = sum(pop_mode, na.rm=T), totpop = sum(pop_total, na.rm=T),
+            perc = modepop/totpop) %>% 
+  select(-(4:5)) %>% 
+  spread(reportyear, perc) %>% 
+  mutate(percChange = (`2006-2010` - `2000`) / `2000` , 
+         percPointChange = (`2006-2010` - `2000`)*100) %>% 
+  ggplot(aes(race_eth_name, percPointChange, colour=mode, shape=mode))+
+  geom_point(size=3)+
+  scale_shape_manual(values = c(15,16,17,18,19,20))+
+  geom_hline(yintercept = 0)+
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))+
+  labs(x="Race/Ethnicity",
+       y="Percentage Point Change", 
+       fill="Mode",
+    title = "Carpooling Declines Across All Racial and Ethnic Groups",
+    subtitle = "Driving Alone and Working from Home have Biggest Increases from 2000 to 2006-2010")
+
+```
+
+
+### Transportation Mode Depends on Race/Ethnicity
+
+Driving alone is the primary mode of transportation for a majority of people across racial and ethnic groups. However, because the number of people in each racial and ethnic group and each method of transportation are not equal, the racial and ethnic groups in California actually do not use the available modes of transportation in equal proportions.
+
+The graph below shows the conditional probabilities of a user being a certain race or ethnic group for each given transportation mode, compared to the racial distribution for the state of California. For example, white people are 45% of the population in this dataset, but are 63% of those who work from home and 54% of bicyclists, only 31% of public transit users, and only 28% of carpoolers. In comparison, Latinos are 33% of the population in this dataset, but are 47% of carpoolers, 44% of public transit users, and only 19% of people who work from home. Similarly, African Americans are 5% of the population in this dataset, but make up 9% of public transit users and only 3% of bicyclists. Of the largest racial and ethnic groups, Asians had the least amount of deviation from their expected value across transportation modes. 
+
+These conditional probabilities help illustrate for policymakers which groups are most affected by new policies. Assuming that these rates hold into the future, an increased gas tax would largely be felt by whites and Latinos, whereas reduced transit service would disproportionately hit African Americans and Latinos. Policymakers hoping to even the distribution of racial and ethnic groups across transportation modes should pursue policies that incentivize carpooling and using public transportation for white people, and increasing bicycle and walking infrastructure and opportunities for working from home in predominantly African American and Latino communities. 
+
+```{r conProb, echo=FALSE, warning=FALSE}
+# Construct a frequency table of race/ethnicity and transportation mode
+
+race_transit <- CAtransit %>% filter(reportyear=="2006-2010") %>% 
+  group_by(race_eth_name, mode) %>% 
+  summarise(people = sum(pop_mode, na.rm=T)) 
+
+# heat map of race/ethnicity and transport mode
+
+race_transit_freq <- xtabs(people ~ race_eth_name + mode, race_transit)
+
+# Graphing relative probabilities
+transit_probs <- as.data.frame(prop.table(race_transit_freq, 2))
+transit_probs$Source <- "Data"
+
+# get statewide % of population for each group
+statewide <- CAtransit %>% filter(reportyear=="2006-2010") %>% 
+  group_by(race_eth_name) %>% 
+  summarise(people = sum(pop_mode, na.rm=T)) %>% 
+  mutate(mode = as.factor("State Avg"),
+         Freq = people/sum(people),
+         Source = as.factor("Statewide")) %>% 
+  select(-2)
+
+transit_probs_graph2 <-  bind_rows(transit_probs, statewide)
+transit_probs_graph2$mode <- as.factor(transit_probs_graph2$mode)
+transit_probs_graph2$Source <- as.factor(transit_probs_graph2$Source)
+
+
+ggplot(transit_probs_graph2, aes(mode, Freq, fill = race_eth_name)) +
+  geom_bar(stat="identity")+
+  facet_grid(~ Source, scales = "free_x", space = "free_x")+
+  labs(x="Transportation Mode",
+       y="% of Users for Each Mode",
+       fill="Race/Ethnicity",
+       title = "Latinos Disproportionately Use Transit & Carpooling",
+       subtitle = "Whites Disproportionately Bike and Work from Home")+
+  scale_fill_brewer(palette = "Paired")
+
+```
+
+
+### Alternate Transport Use Popular in Both Urban and Rural Areas
+
+Finding ways to reduce driving alone requires understanding how its alternatives are used across the state. The following chart shows the breakdown of those alternate transportation modes by region. Carpooling is the most popular form of alternate transportation across the state, although public transportation is almost as popular in the Bay Area. There are only four regions that surpass the state average (25.7%) for alternate transport usage: the Bay Area, Monterrey Bay, North Coast, and Santa Barbara. Of these, the Bay Area is urban, Monterrey Bay is a mix of small cities and commuters to the Bay Area, Santa Barbara is a small city, and the North Coast is rural. This difference demonstrates that promoting alternate transport can work in both urban and rural areas. Though not all areas can afford major investments in public transit, they can pursue incentives for carpooling and working from home, and improving walking and biking infrastructure. 
+
+It is an interesting finding that walking is more popular than bicycling in every region, even though one can travel farther and carry more on a bike than by walking. Though not pictured in this graph, Yolo County (Sacramento Region), home of Davis, "America's Bike Capital", has over 7% of its workforce commute by bike. This should signal to policymakers that investing in bike infrastructure can be a cost-effective way to promote alternate transportation. 
+
+```{r finding3, echo=FALSE}
+# what is the breakdown (by mode) of alternate transport use by region?
+  # just using 2006-2010 data for this one
+
+CAtransit %>% filter(reportyear == "2006-2010" & mode != "CAR") %>% 
+  group_by(region_name, mode) %>% 
+  summarise(modepop = sum(pop_mode, na.rm=T), totpop = sum(pop_total, na.rm=T),
+            perc = modepop/totpop*100) %>% 
+  ggplot(aes(region_name, perc, fill=mode, label=round(perc,1)))+
+  geom_bar(stat="identity")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  geom_hline(yintercept=25.7, linetype="dashed")+
+  labs(x="Region", 
+       y="% of Workforce",
+       fill="Mode",
+       title="Most Regions Below State Average for Alternate Transport Use",
+       subtitle = "Carpooling is Most Popular Alternative to Driving Alone")+
+  geom_text(size=3, position = position_stack(vjust=0.5), color="white")
+```
+
+
+### Conclusion
+
+As California looks to address traffic congestion and greenhouse gas emissions, it must find ways to reduce driving alone to work. Understanding the variation in how Californians get to work is critical to promoting alternate forms of transportation. From 2000 to 2006-2010, rates of driving alone actually increased for most racial and ethnic groups, as did working from home, whereas carpooling declined slightly. Additionally, the distribution of racial and ethnic groups by transportation mode differs significantly from the distribution of Californians. Whites are over-represented among bicyclists and those who work from home, Latinos are over-represented in carpooling and public transit, and African Americans are over-represented in public transportation. Policies that promote alternate transportation must also address these disparities. The regions that are leading in alternatives to driving alone include urban, suburban, and rural counties, indicating there are opportunities for promoting alternate transportation across California, not just in urban areas. Though promoting alternate transportation presents challenges, it also provides numerous opportunities to make California a more equitable, vibrant place to live.
+
+
+### References
+
+California Department of Public Health. (2014). Healthy Communities Data and Indicators Project, CDPH and UCSF. URL https://chhs.data.ca.gov/Environment/Transportation-To-Work-2000-2006-2010/wgev-qytt
+
+Eric C. Anderson. (2014). Reproducible Research Course: Making Maps with R. URL http://eriqande.github.io/rep-res-web/lectures/making-maps-with-R.html
+
+R Core Team (2016). R: A language and environment for statistical computing. R Foundation for
+  Statistical Computing, Vienna, Austria. URL https://www.R-project.org/.
