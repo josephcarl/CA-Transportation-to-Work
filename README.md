@@ -6,3 +6,5 @@ The dataset for this analysis comes from the California Health and Human Service
 Due to the large file size, the csv for the subset of county and regional data used in this analysis ("CATransit.csv") is provided here. For documentation of how that subset was created, see file "Dataset Preparation.R"
 
 The entire analysis is included in the file "CA_Transportation.R", while the main findings are included in the final report (pdf and Rmd).
+
+The dashboard created in Power BI for this project is located [here](https://app.powerbi.com/view?r=eyJrIjoiYTc2OGIwZDMtNjc3NC00YjExLTlkYTAtMTY5Y2QwOWY3NGRkIiwidCI6ImJjMTBlMDUyLWIwMWMtNDg0OS05OTY3LWVlN2VjNzRmYzlkOCIsImMiOjZ9). The Power BI web app does not support embedded R visualizations, but you can see the same graph of conditional probabilities in the written report.
